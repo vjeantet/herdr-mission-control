@@ -1,8 +1,8 @@
 # herdr-mission-control
 
-Mission Control for [herdr](https://github.com/herdrdev/herdr): on a shortcut, a full-screen popup shows every pane of the current workspace as tiles (content preview + agent status), grouped by tab. Selecting a tile switches focus to that pane.
+Mission Control (exposé) for [herdr](https://github.com/herdrdev/herdr): on a shortcut, a full-screen popup shows every pane of the current workspace as tiles (content preview + agent status), grouped by tab. Selecting a tile switches focus to that pane.
 
-Status: prototype (v0.2). Styled ANSI previews, adaptive grid. Still to validate in an interactive session: the focus set by the plugin survives the popup closing.
+Styled ANSI previews, adaptive and responsive grid.
 
 ## Installation (development)
 
@@ -11,7 +11,7 @@ cargo build --release
 herdr plugin link /path/to/herdr-mission-control
 ```
 
-Shortcut, in the herdr config:
+If you don't use the [command palette](https://github.com/vjeantet/herdr-palette), add a shortcut in the herdr config:
 
 ```toml
 [[keys.command]]
@@ -44,8 +44,3 @@ herdr plugin pane open --plugin vjeantet.mission-control --entrypoint mission-co
 - ANSI rendering: home-grown SGR parser (`src/ansi.rs`), sufficient because herdr regenerates the ANSI from its cell grid (pure SGR, no cursor sequences). Zero parsing dependencies.
 - Grid: shrink to fit everything, 60×15 floor, then scrolling (persistent offset, adjusted only when the selection would leave the viewport). An intermediate "header-only degraded tiles" mode was tried and removed: it crushed everything while leaving the screen half empty.
 
-## To validate / known limitations
-
-1. Closing the popup must not restore the previous focus over the one set by the plugin (documented for `overlay`, undocumented for `popup`) - interactive session test required.
-2. Sequential refresh inside the event loop; with a huge number of panes or a loaded server, the 250 ms tick could stretch - parallelize if it shows.
-3. Tabs/panes created or closed while the overlay is open do not appear/disappear (structure frozen at open time, only contents and statuses are refreshed).
