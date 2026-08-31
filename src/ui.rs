@@ -220,19 +220,19 @@ pub fn draw(frame: &mut Frame, app: &mut App) {
 
     let mut help = vec![
         Span::styled(" ←↓↑→/hjkl ", Style::default().fg(Color::Cyan)),
-        Span::raw("naviguer  "),
+        Span::raw("navigate  "),
         Span::styled("⏎", Style::default().fg(Color::Cyan)),
-        Span::raw(" basculer  "),
+        Span::raw(" switch  "),
         Span::styled("1-9", Style::default().fg(Color::Cyan)),
-        Span::raw(" saut direct  "),
+        Span::raw(" jump  "),
         Span::styled("⌫", Style::default().fg(Color::Cyan)),
-        Span::raw(" fermer le pane  "),
+        Span::raw(" close pane  "),
         Span::styled("esc", Style::default().fg(Color::Cyan)),
-        Span::raw(" quitter"),
+        Span::raw(" quit"),
     ];
     if plan.scrolling {
         help.push(Span::styled(
-            "  ‹défilement›",
+            "  ‹scrolling›",
             Style::default().fg(Color::DarkGray),
         ));
     }
@@ -264,7 +264,7 @@ fn draw_confirm_close(frame: &mut Frame, app: &App) {
         .borders(Borders::ALL)
         .border_style(Style::default().fg(Color::Red))
         .title(Line::from(Span::styled(
-            " Fermer ce pane ? ",
+            " Close this pane? ",
             Style::default().add_modifier(Modifier::BOLD),
         )));
     let inner = block.inner(area);
@@ -282,10 +282,10 @@ fn draw_confirm_close(frame: &mut Frame, app: &App) {
         ]),
         Line::raw(""),
         Line::from(vec![
-            Span::styled("⏎/o", Style::default().fg(Color::Red)),
-            Span::raw(" fermer   "),
+            Span::styled("⏎/y", Style::default().fg(Color::Red)),
+            Span::raw(" close   "),
             Span::styled("esc/n", Style::default().fg(Color::Cyan)),
-            Span::raw(" annuler"),
+            Span::raw(" cancel"),
         ]),
     ];
     frame.render_widget(Paragraph::new(body), inner);

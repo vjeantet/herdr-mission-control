@@ -1,17 +1,17 @@
 # herd-expose
 
-Exposé / Mission Control pour [herdr](https://github.com/herdrdev/herdr) : sur un raccourci, un popup plein écran affiche tous les panes du workspace courant sous forme de tuiles (aperçu du contenu + statut d'agent), groupés par tab. Sélectionner une tuile bascule le focus sur le pane.
+Exposé / Mission Control for [herdr](https://github.com/herdrdev/herdr): on a shortcut, a full-screen popup shows every pane of the current workspace as tiles (content preview + agent status), grouped by tab. Selecting a tile switches focus to that pane.
 
-Statut : prototype (v0.2). Aperçus ANSI stylés, grille adaptative. Reste à valider en session interactive : le focus posé par le plugin survit à la fermeture du popup.
+Status: prototype (v0.2). Styled ANSI previews, adaptive grid. Still to validate in an interactive session: the focus set by the plugin survives the popup closing.
 
-## Installation (développement)
+## Installation (development)
 
 ```bash
 cargo build --release
 herdr plugin link /path/to/herd-expose
 ```
 
-Raccourci, dans la config herdr :
+Shortcut, in the herdr config:
 
 ```toml
 [[keys.command]]
@@ -21,31 +21,31 @@ command = "vjeantet.expose.open"
 description = "exposé"
 ```
 
-Test manuel sans raccourci :
+Manual test without the shortcut:
 
 ```bash
 herdr plugin pane open --plugin vjeantet.expose --entrypoint expose
 ```
 
-## Clavier
+## Keyboard
 
-- flèches / `hjkl` : naviguer entre les tuiles
-- `Entrée` : basculer sur le pane sélectionné
-- `1`-`9` : saut direct
-- `Retour arrière` : fermer le pane sélectionné (avec confirmation ; l'exposé reste ouvert pour enchaîner, et se ferme s'il ne reste rien à afficher)
-- `Échap` / `q` : quitter
+- arrows / `hjkl`: navigate between tiles
+- `Enter`: switch to the selected pane
+- `1`-`9`: direct jump
+- `Backspace`: close the selected pane (with confirmation; the exposé stays open for chained closes, and exits when nothing is left to show)
+- `Esc` / `q`: quit
 
-## Notes d'implémentation
+## Implementation notes
 
-- Plugin herdr v1 : manifeste + sous-processus. Le binaire parle directement au socket API (`HERDR_SOCKET_PATH`, JSON délimité par sauts de ligne, une requête par connexion) : `session.snapshot`, `pane.read`, `pane.zoom`. Pas de spawn de CLI : nécessaire pour le rafraîchissement live.
-- Rafraîchissement live des tuiles à 4 Hz (aperçus, statuts d'agents, états de zoom). La structure sections/tuiles reste figée à l'ouverture : la sélection et la disposition spatiale ne bougent pas sous le curseur.
-- Le focus par id n'existe pas dans l'API ; on utilise `pane zoom <id> --on|--off` avec le mode correspondant à l'état de zoom courant de la tab : no-op sur le zoom, mais `handle_pane_zoom` focalise le pane avant de vérifier le mode.
-- Aperçus : `pane.read` source `recent_unwrapped`, format `ansi`.
-- Rendu ANSI : parseur SGR maison (`src/ansi.rs`), suffisant car herdr régénère l'ANSI depuis sa grille de cellules (SGR pur, pas de séquences de curseur). Zéro dépendance de parsing.
-- Grille : rétrécissement pour tout faire tenir, plancher 60×15, puis défilement (offset calculé sans état, la sélection reste visible). Un mode intermédiaire "tuiles dégradées en-tête seul" a été essayé puis retiré : il écrasait tout en laissant l'écran à moitié vide.
+- herdr v1 plugin: manifest + subprocess. The binary talks directly to the API socket (`HERDR_SOCKET_PATH`, newline-delimited JSON, one request per connection): `session.snapshot`, `pane.read`, `pane.zoom`, `pane.close`. No CLI spawning: required for the live refresh.
+- Live tile refresh at 4 Hz (previews, agent statuses, zoom states). The section/tile structure stays frozen from open time: the selection and the spatial layout do not move under the cursor.
+- Focus by id does not exist in the API; we use `pane zoom <id> --on|--off` with the mode matching the tab's current zoom state: a no-op for the zoom, but `handle_pane_zoom` focuses the pane before checking the mode.
+- Previews: `pane.read` source `visible`, format `ansi`, no line limit. The `recent*` sources window the tail of the rendered grid (blank rows below the cursor included), which returns all-blank text for a pane whose content sits at the top of a tall screen; `visible` reads the full viewport from row 0. Trailing blank lines are trimmed at render time before the tail window is applied.
+- ANSI rendering: home-grown SGR parser (`src/ansi.rs`), sufficient because herdr regenerates the ANSI from its cell grid (pure SGR, no cursor sequences). Zero parsing dependencies.
+- Grid: shrink to fit everything, 60×15 floor, then scrolling (persistent offset, adjusted only when the selection would leave the viewport). An intermediate "header-only degraded tiles" mode was tried and removed: it crushed everything while leaving the screen half empty.
 
-## À valider / limites connues
+## To validate / known limitations
 
-1. La fermeture du popup ne doit pas restaurer le focus antérieur par-dessus celui posé par le plugin (documenté pour `overlay`, non documenté pour `popup`) - test en session interactive requis.
-2. Rafraîchissement séquentiel dans la boucle d'événements ; avec énormément de panes ou un serveur chargé, le tick de 250 ms pourrait s'étirer - à paralléliser si ça se sent.
-3. Les tabs/panes créés ou fermés pendant que l'overlay est ouvert n'apparaissent/disparaissent pas (structure figée à l'ouverture, seuls contenus et statuts sont rafraîchis).
+1. Closing the popup must not restore the previous focus over the one set by the plugin (documented for `overlay`, undocumented for `popup`) - interactive session test required.
+2. Sequential refresh inside the event loop; with a huge number of panes or a loaded server, the 250 ms tick could stretch - parallelize if it shows.
+3. Tabs/panes created or closed while the overlay is open do not appear/disappear (structure frozen at open time, only contents and statuses are refreshed).
