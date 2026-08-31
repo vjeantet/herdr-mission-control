@@ -211,7 +211,7 @@ fn run(app: &mut App, client: &HerdrClient) -> std::io::Result<Outcome> {
                     if let Some((id, _)) = app.selected_pane() {
                         let id = id.to_string();
                         if client.pane_close(&id).is_ok() {
-                            // Stay in the exposé for chained closes: rebuild
+                            // Stay in Mission Control for chained closes: rebuild
                             // the grid (herdr may have cascaded tab/workspace
                             // closes) and follow its new focused pane. Exit
                             // only when nothing is left to show.
@@ -268,7 +268,7 @@ fn main() -> ExitCode {
     let client = match HerdrClient::from_env() {
         Ok(client) => client,
         Err(err) => {
-            eprintln!("herd-expose: {err}");
+            eprintln!("herdr-mission-control: {err}");
             return ExitCode::FAILURE;
         }
     };
@@ -276,7 +276,7 @@ fn main() -> ExitCode {
     let mut app = match build_app(&client) {
         Ok(app) => app,
         Err(err) => {
-            eprintln!("herd-expose: {err}");
+            eprintln!("herdr-mission-control: {err}");
             return ExitCode::FAILURE;
         }
     };
@@ -285,7 +285,7 @@ fn main() -> ExitCode {
         Ok(outcome) => outcome,
         Err(err) => {
             ratatui::restore();
-            eprintln!("herd-expose: terminal error: {err}");
+            eprintln!("herdr-mission-control: terminal error: {err}");
             return ExitCode::FAILURE;
         }
     };
@@ -300,7 +300,7 @@ fn main() -> ExitCode {
             tab_zoomed,
         } => {
             if let Err(err) = client.focus_pane(&pane_id, tab_zoomed) {
-                eprintln!("herd-expose: focus {pane_id} failed: {err}");
+                eprintln!("herdr-mission-control: focus {pane_id} failed: {err}");
                 return ExitCode::FAILURE;
             }
         }

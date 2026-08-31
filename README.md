@@ -1,6 +1,6 @@
-# herd-expose
+# herdr-mission-control
 
-Exposé / Mission Control for [herdr](https://github.com/herdrdev/herdr): on a shortcut, a full-screen popup shows every pane of the current workspace as tiles (content preview + agent status), grouped by tab. Selecting a tile switches focus to that pane.
+Mission Control for [herdr](https://github.com/herdrdev/herdr): on a shortcut, a full-screen popup shows every pane of the current workspace as tiles (content preview + agent status), grouped by tab. Selecting a tile switches focus to that pane.
 
 Status: prototype (v0.2). Styled ANSI previews, adaptive grid. Still to validate in an interactive session: the focus set by the plugin survives the popup closing.
 
@@ -8,7 +8,7 @@ Status: prototype (v0.2). Styled ANSI previews, adaptive grid. Still to validate
 
 ```bash
 cargo build --release
-herdr plugin link /path/to/herd-expose
+herdr plugin link /path/to/herdr-mission-control
 ```
 
 Shortcut, in the herdr config:
@@ -17,14 +17,14 @@ Shortcut, in the herdr config:
 [[keys.command]]
 key = "prefix+e"
 type = "plugin_action"
-command = "vjeantet.expose.open"
-description = "exposé"
+command = "vjeantet.mission-control.open"
+description = "mission control"
 ```
 
 Manual test without the shortcut:
 
 ```bash
-herdr plugin pane open --plugin vjeantet.expose --entrypoint expose
+herdr plugin pane open --plugin vjeantet.mission-control --entrypoint mission-control
 ```
 
 ## Keyboard
@@ -32,7 +32,7 @@ herdr plugin pane open --plugin vjeantet.expose --entrypoint expose
 - arrows / `hjkl`: navigate between tiles
 - `Enter`: switch to the selected pane
 - `1`-`9`: direct jump
-- `Backspace`: close the selected pane (with confirmation; the exposé stays open for chained closes, and exits when nothing is left to show)
+- `Backspace`: close the selected pane (with confirmation; Mission Control stays open for chained closes, and exits when nothing is left to show)
 - `Esc` / `q`: quit
 
 ## Implementation notes

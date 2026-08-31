@@ -3,7 +3,7 @@
 #
 # Fast path: download the prebuilt binary matching this checkout's declared
 # version and this machine's platform, verify its SHA-256, and install it at
-# target/release/herd-expose - the path the manifest's pane entrypoint points
+# target/release/herdr-mission-control - the path the manifest's pane entrypoint points
 # at.
 #
 # Fallback: on ANY miss (no release for this version, no prebuilt for this
@@ -21,18 +21,18 @@
 # Integrity is unaffected - the asset is still SHA-256 verified, and a version
 # with no published release 404s straight to the source build.
 #
-# EXPOSE_REPO_ROOT / EXPOSE_CARGO_TOML / EXPOSE_OUT / EXPOSE_BASE_URL are
+# MISSION_CONTROL_REPO_ROOT / MISSION_CONTROL_CARGO_TOML / MISSION_CONTROL_OUT / MISSION_CONTROL_BASE_URL are
 # overridable so tests/fetch-or-build.bats can exercise every path of this
 # script against local files, with no network.
 set -u
 
-repo="vjeantet/herd-expose"
+repo="vjeantet/herdr-mission-control"
 
 script_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
-repo_root="${EXPOSE_REPO_ROOT:-$script_dir/..}"
-cargo_toml="${EXPOSE_CARGO_TOML:-$repo_root/Cargo.toml}"
-out="${EXPOSE_OUT:-$repo_root/target/release/herd-expose}"
-base_url="${EXPOSE_BASE_URL:-https://github.com/$repo/releases/download}"
+repo_root="${MISSION_CONTROL_REPO_ROOT:-$script_dir/..}"
+cargo_toml="${MISSION_CONTROL_CARGO_TOML:-$repo_root/Cargo.toml}"
+out="${MISSION_CONTROL_OUT:-$repo_root/target/release/herdr-mission-control}"
+base_url="${MISSION_CONTROL_BASE_URL:-https://github.com/$repo/releases/download}"
 
 have() { command -v "$1" >/dev/null 2>&1; }
 
@@ -44,14 +44,14 @@ build_from_source() {
   # shellcheck source=/dev/null
   [ -f "$HOME/.cargo/env" ] && . "$HOME/.cargo/env"
   if ! have cargo; then
-    echo "herd-expose needs a Rust toolchain to build, but cargo was not found. Install it from https://rustup.rs then re-run: herdr plugin install $repo" >&2
+    echo "herdr-mission-control needs a Rust toolchain to build, but cargo was not found. Install it from https://rustup.rs then re-run: herdr plugin install $repo" >&2
     exit 1
   fi
   exec cargo build --release
 }
 
 fallback() {
-  echo "herd-expose: $1 - building from source instead." >&2
+  echo "herdr-mission-control: $1 - building from source instead." >&2
   [ -n "${tmpdir:-}" ] && rm -rf "$tmpdir"
   build_from_source
 }
@@ -114,7 +114,7 @@ esac
 version=$(grep -E '^version *= *"' "$cargo_toml" 2>/dev/null | head -n 1 | sed -E 's/^version *= *"([^"]+)".*/\1/')
 [ -n "$version" ] || fallback "could not read version from $cargo_toml"
 
-asset="herd-expose-$triple"
+asset="herdr-mission-control-$triple"
 
 tmpdir=$(mktemp -d 2>/dev/null) || fallback "could not create a temp dir"
 trap 'rm -rf "$tmpdir"' EXIT
@@ -171,5 +171,5 @@ fi
 
 mkdir -p "$(dirname "$out")"
 mv -f "$tmpbin" "$out" || fallback "could not install the verified binary to $out"
-echo "herd-expose: installed prebuilt v$version ($triple), verified SHA-256.$ahead_note"
+echo "herdr-mission-control: installed prebuilt v$version ($triple), verified SHA-256.$ahead_note"
 exit 0

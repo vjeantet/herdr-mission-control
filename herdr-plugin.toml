@@ -1,8 +1,8 @@
-id = "vjeantet.expose"
-name = "Herd Exposé"
+id = "vjeantet.mission-control"
+name = "Mission Control"
 version = "0.1.0"
 min_herdr_version = "0.8.0"
-description = "Mission Control style pane overview for the current workspace"
+description = "Tiled overview of every pane in the current workspace"
 platforms = ["macos", "linux"]
 
 [[build]]
@@ -10,14 +10,14 @@ command = ["sh", "scripts/fetch-or-build.sh"]
 
 [[actions]]
 id = "open"
-title = "Open Exposé"
+title = "Open Mission Control"
 contexts = ["workspace"]
 command = ["sh", "scripts/open.sh"]
 
 [[panes]]
-id = "expose"
-title = "Exposé"
+id = "mission-control"
+title = "Mission Control"
 placement = "popup"
 width = "100%"
 height = "100%"
-command = ["./target/release/herd-expose"]
+command = ["./target/release/herdr-mission-control"]

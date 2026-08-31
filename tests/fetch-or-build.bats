@@ -21,13 +21,13 @@ setup() {
 
   # A version no real release carries, so a mistake here can never reach the
   # actual GitHub releases of this repository.
-  printf '[package]\nname = "herd-expose"\nversion = "9.9.9"\n' >"$REPO/Cargo.toml"
+  printf '[package]\nname = "herdr-mission-control"\nversion = "9.9.9"\n' >"$REPO/Cargo.toml"
 
   export HOME="$BATS_TEST_TMPDIR/home"
-  export EXPOSE_REPO_ROOT="$REPO"
-  export EXPOSE_CARGO_TOML="$REPO/Cargo.toml"
-  export EXPOSE_OUT="$REPO/target/release/herd-expose"
-  export EXPOSE_BASE_URL="file://$BATS_TEST_TMPDIR/releases"
+  export MISSION_CONTROL_REPO_ROOT="$REPO"
+  export MISSION_CONTROL_CARGO_TOML="$REPO/Cargo.toml"
+  export MISSION_CONTROL_OUT="$REPO/target/release/herdr-mission-control"
+  export MISSION_CONTROL_BASE_URL="file://$BATS_TEST_TMPDIR/releases"
   export CARGO_LOG
   export STUB_OS=Linux
   export STUB_ARCH=x86_64
@@ -77,7 +77,7 @@ sha256_line() {
 # binary would connect to the live socket and start its TUI.
 publish() {
   local triple="$1" code="${2:-1}" asset
-  asset="herd-expose-$triple"
+  asset="herdr-mission-control-$triple"
   printf '#!/bin/sh\n[ -z "${HERDR_SOCKET_PATH:-}" ] || exit 97\nexit %s\n' "$code" >"$RELEASE/$asset"
   chmod +x "$RELEASE/$asset"
   (cd "$RELEASE" && sha256_line "$asset" >"$asset.sha256")
@@ -91,7 +91,7 @@ cargo_was_called() {
   publish x86_64-unknown-linux-musl
   run sh "$SCRIPT"
   [ "$status" -eq 0 ]
-  [ -x "$EXPOSE_OUT" ]
+  [ -x "$MISSION_CONTROL_OUT" ]
   ! cargo_was_called
   [[ "$output" == *"installed prebuilt v9.9.9 (x86_64-unknown-linux-musl)"* ]]
 }
@@ -99,31 +99,31 @@ cargo_was_called() {
 @test "falls back to a source build when no prebuilt is published for the version" {
   run sh "$SCRIPT"
   [ "$status" -eq 0 ]
-  [ ! -e "$EXPOSE_OUT" ]
+  [ ! -e "$MISSION_CONTROL_OUT" ]
   cargo_was_called
   [ "$(cat "$CARGO_LOG")" = "build --release" ]
 }
 
 @test "falls back to a source build when the checksum does not match" {
   publish x86_64-unknown-linux-musl
-  printf '%s  herd-expose-x86_64-unknown-linux-musl\n' \
+  printf '%s  herdr-mission-control-x86_64-unknown-linux-musl\n' \
     "0000000000000000000000000000000000000000000000000000000000000000" \
-    >"$RELEASE/herd-expose-x86_64-unknown-linux-musl.sha256"
+    >"$RELEASE/herdr-mission-control-x86_64-unknown-linux-musl.sha256"
   run sh "$SCRIPT"
   [ "$status" -eq 0 ]
-  [ ! -e "$EXPOSE_OUT" ]
+  [ ! -e "$MISSION_CONTROL_OUT" ]
   cargo_was_called
   [[ "$output" == *"checksum mismatch"* ]]
 }
 
 @test "falls back to a source build when the checksum file names another asset" {
   publish x86_64-unknown-linux-musl
-  (cd "$RELEASE" && sha256_line herd-expose-x86_64-unknown-linux-musl \
-    | sed 's/herd-expose-x86_64-unknown-linux-musl/herd-expose-somewhere-else/' \
-    >herd-expose-x86_64-unknown-linux-musl.sha256)
+  (cd "$RELEASE" && sha256_line herdr-mission-control-x86_64-unknown-linux-musl \
+    | sed 's/herdr-mission-control-x86_64-unknown-linux-musl/herdr-mission-control-somewhere-else/' \
+    >herdr-mission-control-x86_64-unknown-linux-musl.sha256)
   run sh "$SCRIPT"
   [ "$status" -eq 0 ]
-  [ ! -e "$EXPOSE_OUT" ]
+  [ ! -e "$MISSION_CONTROL_OUT" ]
   cargo_was_called
   [[ "$output" == *"no checksum listed"* ]]
 }
@@ -140,7 +140,7 @@ cargo_was_called() {
   publish x86_64-unknown-linux-musl 126
   run sh "$SCRIPT"
   [ "$status" -eq 0 ]
-  [ ! -e "$EXPOSE_OUT" ]
+  [ ! -e "$MISSION_CONTROL_OUT" ]
   cargo_was_called
   [[ "$output" == *"does not run on this machine"* ]]
 }
@@ -151,7 +151,7 @@ cargo_was_called() {
   publish armv7-unknown-linux-musleabihf
   run sh "$SCRIPT"
   [ "$status" -eq 0 ]
-  [ -x "$EXPOSE_OUT" ]
+  [ -x "$MISSION_CONTROL_OUT" ]
   ! cargo_was_called
   [[ "$output" == *"(armv7-unknown-linux-musleabihf)"* ]]
 }
@@ -161,7 +161,7 @@ cargo_was_called() {
   publish aarch64-unknown-linux-musl
   run sh "$SCRIPT"
   [ "$status" -eq 0 ]
-  [ -x "$EXPOSE_OUT" ]
+  [ -x "$MISSION_CONTROL_OUT" ]
   [[ "$output" == *"(aarch64-unknown-linux-musl)"* ]]
 }
 
@@ -171,6 +171,6 @@ cargo_was_called() {
   publish aarch64-apple-darwin
   run sh "$SCRIPT"
   [ "$status" -eq 0 ]
-  [ -x "$EXPOSE_OUT" ]
+  [ -x "$MISSION_CONTROL_OUT" ]
   [[ "$output" == *"(aarch64-apple-darwin)"* ]]
 }

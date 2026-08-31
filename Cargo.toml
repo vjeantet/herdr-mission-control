@@ -1,9 +1,9 @@
 [package]
-name = "herd-expose"
+name = "herdr-mission-control"
 version = "0.1.0"
 edition = "2021"
 license = "MIT"
-description = "Mission Control style pane overview plugin for herdr"
+description = "Tiled overview of every pane in the current workspace, for herdr"
 
 [dependencies]
 ratatui = "0.30"

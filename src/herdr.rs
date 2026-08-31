@@ -108,7 +108,7 @@ impl HerdrClient {
 
     pub fn snapshot(&self) -> Result<Snapshot, String> {
         self.call::<SnapshotResult>(&json!({
-            "id": "expose:snapshot",
+            "id": "mc:snapshot",
             "method": "session.snapshot",
             "params": {},
         }))
@@ -121,7 +121,7 @@ impl HerdrClient {
     /// all-blank. `visible` starts at row 0 and is bounded by screen height.
     pub fn pane_read(&self, pane_id: &str) -> Result<String, String> {
         self.call::<ReadResultBody>(&json!({
-            "id": "expose:read",
+            "id": "mc:read",
             "method": "pane.read",
             "params": {
                 "pane_id": pane_id,
@@ -134,7 +134,7 @@ impl HerdrClient {
 
     pub fn pane_close(&self, pane_id: &str) -> Result<(), String> {
         self.call::<serde_json::Value>(&json!({
-            "id": "expose:close",
+            "id": "mc:close",
             "method": "pane.close",
             "params": { "pane_id": pane_id },
         }))
@@ -147,7 +147,7 @@ impl HerdrClient {
     /// before checking the mode).
     pub fn focus_pane(&self, pane_id: &str, tab_zoomed: bool) -> Result<(), String> {
         self.call::<serde_json::Value>(&json!({
-            "id": "expose:focus",
+            "id": "mc:focus",
             "method": "pane.zoom",
             "params": {
                 "pane_id": pane_id,
