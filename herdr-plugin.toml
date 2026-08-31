@@ -6,7 +6,7 @@ description = "Mission Control style pane overview for the current workspace"
 platforms = ["macos", "linux"]
 
 [[build]]
-command = ["cargo", "build", "--release"]
+command = ["sh", "scripts/fetch-or-build.sh"]
 
 [[actions]]
 id = "open"
