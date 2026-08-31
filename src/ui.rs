@@ -361,8 +361,15 @@ fn draw_tile(tile: &Tile, badge: usize, selected: bool, area: Rect, buf: &mut Bu
     }
 
     // Show the tail of the preview: the bottom of a terminal is where the
-    // action is.
-    let tail_start = tile.preview.len().saturating_sub(inner.height as usize);
-    let text: Vec<Line> = tile.preview[tail_start..].to_vec();
+    // action is. Trailing blank lines are excluded first, otherwise a pane
+    // whose content sits at the top of a mostly empty screen (editor, fresh
+    // process) renders as an empty tile.
+    let end = tile
+        .preview
+        .iter()
+        .rposition(|line| line.spans.iter().any(|s| !s.content.trim().is_empty()))
+        .map_or(0, |i| i + 1);
+    let tail_start = end.saturating_sub(inner.height as usize);
+    let text: Vec<Line> = tile.preview[tail_start..end].to_vec();
     Paragraph::new(text).render(inner, buf);
 }

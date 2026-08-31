@@ -9,7 +9,6 @@ use herdr::HerdrClient;
 use ratatui::crossterm::event::{self, Event, KeyCode, KeyEventKind};
 use ratatui::text::Line;
 
-const PREVIEW_LINES: u32 = 30;
 const REFRESH_INTERVAL: Duration = Duration::from_millis(250);
 
 pub struct Tile {
@@ -79,7 +78,7 @@ impl App {
     fn refresh(&mut self, client: &HerdrClient) {
         for section in &mut self.sections {
             for tile in &mut section.tiles {
-                if let Ok(text) = client.pane_read(&tile.pane_id, PREVIEW_LINES) {
+                if let Ok(text) = client.pane_read(&tile.pane_id) {
                     tile.preview = ansi::parse(&text);
                 }
             }
@@ -141,7 +140,7 @@ fn build_app(client: &HerdrClient) -> Result<App, String> {
         {
             let preview = ansi::parse(
                 &client
-                    .pane_read(&pane.pane_id, PREVIEW_LINES)
+                    .pane_read(&pane.pane_id)
                     .unwrap_or_else(|err| format!("(read error: {err})")),
             );
             let title = pane

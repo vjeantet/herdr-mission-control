@@ -115,14 +115,17 @@ impl HerdrClient {
         .map(|r| r.snapshot)
     }
 
-    pub fn pane_read(&self, pane_id: &str, lines: u32) -> Result<String, String> {
+    /// Full visible viewport, no line limit: `recent*` sources window the
+    /// tail of the rendered grid (herdr `ghostty_recent_read_range`), so a
+    /// pane taller than the limit with text only at the top would read as
+    /// all-blank. `visible` starts at row 0 and is bounded by screen height.
+    pub fn pane_read(&self, pane_id: &str) -> Result<String, String> {
         self.call::<ReadResultBody>(&json!({
             "id": "expose:read",
             "method": "pane.read",
             "params": {
                 "pane_id": pane_id,
-                "source": "recent_unwrapped",
-                "lines": lines,
+                "source": "visible",
                 "format": "ansi",
             },
         }))
