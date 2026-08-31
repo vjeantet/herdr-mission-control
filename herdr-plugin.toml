@@ -1,0 +1,23 @@
+id = "vjeantet.expose"
+name = "Herd Exposé"
+version = "0.1.0"
+min_herdr_version = "0.8.0"
+description = "Mission Control style pane overview for the current workspace"
+platforms = ["macos", "linux"]
+
+[[build]]
+command = ["cargo", "build", "--release"]
+
+[[actions]]
+id = "open"
+title = "Open Exposé"
+contexts = ["workspace"]
+command = ["sh", "scripts/open.sh"]
+
+[[panes]]
+id = "expose"
+title = "Exposé"
+placement = "popup"
+width = "100%"
+height = "100%"
+command = ["./target/release/herd-expose"]
