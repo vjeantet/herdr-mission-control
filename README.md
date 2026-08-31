@@ -4,6 +4,8 @@ Mission Control (exposé) for [herdr](https://github.com/herdrdev/herdr): on a s
 
 Styled ANSI previews, adaptive and responsive grid.
 
+![Mission Control: every pane of the workspace as a live tile, grouped by tab; navigate, switch, close](docs/assets/demo.gif)
+
 ## Install
 
 ```bash
