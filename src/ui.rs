@@ -2,7 +2,7 @@ use ratatui::buffer::Buffer;
 use ratatui::layout::{Constraint, Layout, Rect};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, Borders, Paragraph, Widget};
+use ratatui::widgets::{Block, Borders, Clear, Paragraph, Widget};
 use ratatui::Frame;
 
 use crate::{App, Tile};
@@ -109,33 +109,47 @@ fn plan_rows(app: &App, body: Rect) -> Plan {
     }
 }
 
-/// Stateless scroll: the smallest offset that keeps the selected tile row
-/// (and its section header when possible) fully visible.
-fn scroll_offset(app: &App, plan: &Plan, viewport: u16) -> u16 {
-    if !plan.scrolling || plan.total_height <= viewport {
+/// Scroll into view: the persistent offset moves only when the selected
+/// tile row (plus its section header when it sits just above) would leave
+/// the viewport. A selection change inside the visible area moves the
+/// cursor alone, not the content.
+fn ensure_selected_visible(app: &mut App, plan: &Plan, viewport: u16) -> u16 {
+    if plan.total_height <= viewport {
+        app.scroll = 0;
         return 0;
     }
-    let selected = plan.rows.iter().find(|row| {
+    let mut offset = app.scroll.min(plan.total_height - viewport);
+    let selected = plan.rows.iter().position(|row| {
         matches!(
             row.kind,
             RowKind::Tiles { section, start, end, .. }
                 if section == app.selected.0 && (start..end).contains(&app.selected.1)
         )
     });
-    let Some(row) = selected else {
-        return 0;
-    };
-    let bottom = row.y + row.height;
-    let offset = bottom.saturating_sub(viewport);
-    offset.min(row.y.saturating_sub(1))
+    if let Some(index) = selected {
+        let row = &plan.rows[index];
+        let top = match index.checked_sub(1).map(|i| &plan.rows[i]) {
+            Some(prev) if matches!(prev.kind, RowKind::Header(s) if s == app.selected.0) => prev.y,
+            _ => row.y,
+        };
+        let bottom = row.y + row.height;
+        if bottom > offset + viewport {
+            offset = bottom - viewport;
+        }
+        if top < offset {
+            offset = top;
+        }
+    }
+    app.scroll = offset;
+    offset
 }
 
-pub fn draw(frame: &mut Frame, app: &App) {
+pub fn draw(frame: &mut Frame, app: &mut App) {
     let [body, footer] =
         Layout::vertical([Constraint::Fill(1), Constraint::Length(1)]).areas(frame.area());
 
     let plan = plan_rows(app, body);
-    let offset = scroll_offset(app, &plan, body.height);
+    let offset = ensure_selected_visible(app, &plan, body.height);
 
     // Rows are rendered on a virtual canvas, then the viewport is blitted
     // onto the frame: partially visible tiles scroll line by line instead
@@ -211,8 +225,10 @@ pub fn draw(frame: &mut Frame, app: &App) {
         Span::raw(" basculer  "),
         Span::styled("1-9", Style::default().fg(Color::Cyan)),
         Span::raw(" saut direct  "),
+        Span::styled("⌫", Style::default().fg(Color::Cyan)),
+        Span::raw(" fermer le pane  "),
         Span::styled("esc", Style::default().fg(Color::Cyan)),
-        Span::raw(" fermer"),
+        Span::raw(" quitter"),
     ];
     if plan.scrolling {
         help.push(Span::styled(
@@ -221,6 +237,58 @@ pub fn draw(frame: &mut Frame, app: &App) {
         ));
     }
     frame.render_widget(Paragraph::new(Line::from(help)), footer);
+
+    if app.confirming_close {
+        draw_confirm_close(frame, app);
+    }
+}
+
+fn draw_confirm_close(frame: &mut Frame, app: &App) {
+    let Some(tile) = app
+        .sections
+        .get(app.selected.0)
+        .and_then(|s| s.tiles.get(app.selected.1))
+    else {
+        return;
+    };
+    let screen = frame.area();
+    let width = 50.min(screen.width.saturating_sub(4)).max(20);
+    let area = Rect {
+        x: screen.x + (screen.width.saturating_sub(width)) / 2,
+        y: screen.y + (screen.height.saturating_sub(5)) / 2,
+        width,
+        height: 5.min(screen.height),
+    };
+    frame.render_widget(Clear, area);
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .border_style(Style::default().fg(Color::Red))
+        .title(Line::from(Span::styled(
+            " Fermer ce pane ? ",
+            Style::default().add_modifier(Modifier::BOLD),
+        )));
+    let inner = block.inner(area);
+    frame.render_widget(block, area);
+    let body = vec![
+        Line::from(vec![
+            Span::styled(
+                tile.title.clone(),
+                Style::default().add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(
+                format!("  {}", tile.pane_id),
+                Style::default().fg(Color::DarkGray),
+            ),
+        ]),
+        Line::raw(""),
+        Line::from(vec![
+            Span::styled("⏎/o", Style::default().fg(Color::Red)),
+            Span::raw(" fermer   "),
+            Span::styled("esc/n", Style::default().fg(Color::Cyan)),
+            Span::raw(" annuler"),
+        ]),
+    ];
+    frame.render_widget(Paragraph::new(body), inner);
 }
 
 fn draw_header(app: &App, section_index: usize, area: Rect, buf: &mut Buffer) {

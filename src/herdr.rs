@@ -129,6 +129,15 @@ impl HerdrClient {
         .map(|r| r.read.text)
     }
 
+    pub fn pane_close(&self, pane_id: &str) -> Result<(), String> {
+        self.call::<serde_json::Value>(&json!({
+            "id": "expose:close",
+            "method": "pane.close",
+            "params": { "pane_id": pane_id },
+        }))
+        .map(|_| ())
+    }
+
     /// Focus a pane by id. There is no direct "focus by id" API; a zoom
     /// request matching the tab's current zoom state is a no-op that still
     /// moves focus (herdr `handle_pane_zoom` calls `focus_pane_in_workspace`

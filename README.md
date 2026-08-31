@@ -32,7 +32,8 @@ herdr plugin pane open --plugin vjeantet.expose --entrypoint expose
 - flèches / `hjkl` : naviguer entre les tuiles
 - `Entrée` : basculer sur le pane sélectionné
 - `1`-`9` : saut direct
-- `Échap` / `q` : fermer
+- `Retour arrière` : fermer le pane sélectionné (avec confirmation ; l'exposé reste ouvert pour enchaîner, et se ferme s'il ne reste rien à afficher)
+- `Échap` / `q` : quitter
 
 ## Notes d'implémentation
 

@@ -33,6 +33,10 @@ pub struct App {
     pub sections: Vec<Section>,
     /// (section index, tile index inside section)
     pub selected: (usize, usize),
+    /// Persistent scroll offset in virtual rows, adjusted by the renderer.
+    pub scroll: u16,
+    /// A close confirmation dialog is open for the selected pane.
+    pub confirming_close: bool,
 }
 
 impl App {
@@ -55,12 +59,14 @@ impl App {
         self.selected.1 = col as usize;
     }
 
+    // Clamped, no wrap-around: jumping from bottom back to top (and the
+    // scroll snap that comes with it) is disorienting.
     fn move_vertical(&mut self, delta: isize) {
         let len = self.sections.len() as isize;
         if len == 0 {
             return;
         }
-        let row = (self.selected.0 as isize + delta).rem_euclid(len);
+        let row = (self.selected.0 as isize + delta).clamp(0, len - 1);
         self.selected.0 = row as usize;
         let max = self.sections[self.selected.0].tiles.len().saturating_sub(1);
         self.selected.1 = self.selected.1.min(max);
@@ -172,7 +178,12 @@ fn build_app(client: &HerdrClient) -> Result<App, String> {
     if sections.iter().all(|s| s.tiles.is_empty()) {
         return Err(format!("no panes in workspace {workspace_id}"));
     }
-    Ok(App { sections, selected })
+    Ok(App {
+        sections,
+        selected,
+        scroll: 0,
+        confirming_close: false,
+    })
 }
 
 enum Outcome {
@@ -194,8 +205,36 @@ fn run(app: &mut App, client: &HerdrClient) -> std::io::Result<Outcome> {
         if key.kind != KeyEventKind::Press {
             continue;
         }
+        if app.confirming_close {
+            match key.code {
+                KeyCode::Enter | KeyCode::Char('y') | KeyCode::Char('o') => {
+                    app.confirming_close = false;
+                    if let Some((id, _)) = app.selected_pane() {
+                        let id = id.to_string();
+                        if client.pane_close(&id).is_ok() {
+                            // Stay in the exposé for chained closes: rebuild
+                            // the grid (herdr may have cascaded tab/workspace
+                            // closes) and follow its new focused pane. Exit
+                            // only when nothing is left to show.
+                            match build_app(client) {
+                                Ok(rebuilt) => *app = rebuilt,
+                                Err(_) => break Outcome::Cancel,
+                            }
+                        }
+                    }
+                }
+                KeyCode::Esc | KeyCode::Char('n') => app.confirming_close = false,
+                _ => {}
+            }
+            continue;
+        }
         match key.code {
             KeyCode::Esc | KeyCode::Char('q') => break Outcome::Cancel,
+            KeyCode::Backspace => {
+                if app.selected_pane().is_some() {
+                    app.confirming_close = true;
+                }
+            }
             KeyCode::Left | KeyCode::Char('h') => app.move_horizontal(-1),
             KeyCode::Right | KeyCode::Char('l') => app.move_horizontal(1),
             KeyCode::Up | KeyCode::Char('k') => app.move_vertical(-1),
@@ -255,14 +294,16 @@ fn main() -> ExitCode {
     // Focus is applied after the TUI is torn down but before the process
     // exits (which closes the popup). Risk under validation: the popup close
     // must not restore the previous focus over this one.
-    if let Outcome::Switch {
-        pane_id,
-        tab_zoomed,
-    } = outcome
-    {
-        if let Err(err) = client.focus_pane(&pane_id, tab_zoomed) {
-            eprintln!("herd-expose: focus {pane_id} failed: {err}");
-            return ExitCode::FAILURE;
+    match outcome {
+        Outcome::Cancel => {}
+        Outcome::Switch {
+            pane_id,
+            tab_zoomed,
+        } => {
+            if let Err(err) = client.focus_pane(&pane_id, tab_zoomed) {
+                eprintln!("herd-expose: focus {pane_id} failed: {err}");
+                return ExitCode::FAILURE;
+            }
         }
     }
     ExitCode::SUCCESS
