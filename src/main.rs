@@ -3,13 +3,20 @@ mod herdr;
 mod ui;
 
 use std::process::ExitCode;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use herdr::HerdrClient;
-use ratatui::crossterm::event::{self, Event, KeyCode, KeyEventKind};
+use ratatui::crossterm::event::{
+    self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEventKind, MouseButton,
+    MouseEventKind,
+};
+use ratatui::crossterm::execute;
+use ratatui::layout::{Position, Rect};
 use ratatui::text::Line;
 
 const REFRESH_INTERVAL: Duration = Duration::from_millis(250);
+/// Two clicks on the same tile within this window count as a double-click.
+const DOUBLE_CLICK_INTERVAL: Duration = Duration::from_millis(500);
 
 pub struct Tile {
     pub pane_id: String,
@@ -36,6 +43,9 @@ pub struct App {
     pub scroll: u16,
     /// A close confirmation dialog is open for the selected pane.
     pub confirming_close: bool,
+    /// Screen rectangles of the visible tiles as last drawn, rebuilt by the
+    /// renderer on every frame, for mouse hit-testing.
+    pub tile_rects: Vec<(Rect, (usize, usize))>,
 }
 
 impl App {
@@ -182,6 +192,7 @@ fn build_app(client: &HerdrClient) -> Result<App, String> {
         selected,
         scroll: 0,
         confirming_close: false,
+        tile_rects: Vec::new(),
     })
 }
 
@@ -192,18 +203,59 @@ enum Outcome {
 
 fn run(app: &mut App, client: &HerdrClient) -> std::io::Result<Outcome> {
     let mut terminal = ratatui::try_init()?;
+    let _ = execute!(std::io::stdout(), EnableMouseCapture);
+    let outcome = event_loop(&mut terminal, app, client);
+    let _ = execute!(std::io::stdout(), DisableMouseCapture);
+    ratatui::restore();
+    outcome
+}
+
+fn event_loop(
+    terminal: &mut ratatui::DefaultTerminal,
+    app: &mut App,
+    client: &HerdrClient,
+) -> std::io::Result<Outcome> {
+    let mut last_click: Option<(Instant, (usize, usize))> = None;
     let outcome = loop {
         terminal.draw(|frame| ui::draw(frame, app))?;
         if !event::poll(REFRESH_INTERVAL)? {
             app.refresh(client);
             continue;
         }
-        let Event::Key(key) = event::read()? else {
-            continue;
+        let key = match event::read()? {
+            Event::Key(key) if key.kind == KeyEventKind::Press => key,
+            Event::Mouse(mouse) => {
+                if mouse.kind != MouseEventKind::Down(MouseButton::Left) || app.confirming_close {
+                    continue;
+                }
+                let position = Position::new(mouse.column, mouse.row);
+                let Some(&(_, tile)) = app
+                    .tile_rects
+                    .iter()
+                    .find(|(rect, _)| rect.contains(position))
+                else {
+                    continue;
+                };
+                // A click selects the tile; a second click on the same tile
+                // within the interval switches to it, like Enter.
+                let now = Instant::now();
+                let chained = last_click.is_some_and(|(at, target)| {
+                    target == tile && now - at <= DOUBLE_CLICK_INTERVAL
+                });
+                last_click = Some((now, tile));
+                app.selected = tile;
+                if chained {
+                    if let Some((id, tab_zoomed)) = app.selected_pane() {
+                        break Outcome::Switch {
+                            pane_id: id.to_string(),
+                            tab_zoomed,
+                        };
+                    }
+                }
+                continue;
+            }
+            _ => continue,
         };
-        if key.kind != KeyEventKind::Press {
-            continue;
-        }
         if app.confirming_close {
             match key.code {
                 KeyCode::Enter | KeyCode::Char('y') | KeyCode::Char('o') => {
@@ -260,7 +312,6 @@ fn run(app: &mut App, client: &HerdrClient) -> std::io::Result<Outcome> {
             _ => {}
         }
     };
-    ratatui::restore();
     Ok(outcome)
 }
 
@@ -284,7 +335,7 @@ fn main() -> ExitCode {
     let outcome = match run(&mut app, &client) {
         Ok(outcome) => outcome,
         Err(err) => {
-            ratatui::restore();
+            // run() already restored the terminal on its way out.
             eprintln!("herdr-mission-control: terminal error: {err}");
             return ExitCode::FAILURE;
         }

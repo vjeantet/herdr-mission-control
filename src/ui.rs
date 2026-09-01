@@ -150,6 +150,7 @@ pub fn draw(frame: &mut Frame, app: &mut App) {
 
     let plan = plan_rows(app, body);
     let offset = ensure_selected_visible(app, &plan, body.height);
+    app.tile_rects.clear();
 
     // Rows are rendered on a virtual canvas, then the viewport is blitted
     // onto the frame: partially visible tiles scroll line by line instead
@@ -188,13 +189,29 @@ pub fn draw(frame: &mut Frame, app: &mut App) {
             } => {
                 let cells = Layout::horizontal(vec![Constraint::Fill(1); columns]).split(area);
                 for (offset_in_row, tile_index) in (start..end).enumerate() {
+                    let cell = cells[offset_in_row];
+                    // Visible slice of the cell in screen coordinates, for
+                    // mouse hit-testing.
+                    let top = cell.y.max(offset);
+                    let bottom = (cell.y + cell.height).min(offset + body.height);
+                    if bottom > top {
+                        app.tile_rects.push((
+                            Rect {
+                                x: body.x + cell.x,
+                                y: body.y + top - offset,
+                                width: cell.width,
+                                height: bottom - top,
+                            },
+                            (section, tile_index),
+                        ));
+                    }
                     let tile = &app.sections[section].tiles[tile_index];
                     let selected = app.selected == (section, tile_index);
                     draw_tile(
                         tile,
                         badge_start + offset_in_row + 1,
                         selected,
-                        cells[offset_in_row],
+                        cell,
                         &mut scratch,
                     );
                 }
