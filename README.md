@@ -51,6 +51,8 @@ herdr plugin pane open --plugin vjeantet.mission-control --entrypoint mission-co
 - `Backspace`: close the selected pane (with confirmation; Mission Control stays open for chained closes, and exits when nothing is left to show)
 - `Esc` / `q`: quit
 
+Mouse: a click selects a tile; a double-click switches to it, same as `Enter`.
+
 ## Implementation notes
 
 - herdr v1 plugin: manifest + subprocess. The binary talks directly to the API socket (`HERDR_SOCKET_PATH`, newline-delimited JSON, one request per connection): `session.snapshot`, `pane.read`, `pane.zoom`, `pane.close`. No CLI spawning: required for the live refresh.
