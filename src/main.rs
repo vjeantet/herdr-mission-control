@@ -17,6 +17,8 @@ use ratatui::text::Line;
 const REFRESH_INTERVAL: Duration = Duration::from_millis(250);
 /// Two clicks on the same tile within this window count as a double-click.
 const DOUBLE_CLICK_INTERVAL: Duration = Duration::from_millis(500);
+/// Virtual rows moved per wheel notch.
+const SCROLL_STEP: u16 = 3;
 
 pub struct Tile {
     pub pane_id: String,
@@ -41,6 +43,9 @@ pub struct App {
     pub selected: (usize, usize),
     /// Persistent scroll offset in virtual rows, adjusted by the renderer.
     pub scroll: u16,
+    /// The viewport follows the selection. Cleared while the wheel drives
+    /// the scroll, restored as soon as the selection moves again.
+    pub follow_selection: bool,
     /// A close confirmation dialog is open for the selected pane.
     pub confirming_close: bool,
     /// Screen rectangles of the visible tiles as last drawn, rebuilt by the
@@ -66,6 +71,7 @@ impl App {
         }
         let col = (self.selected.1 as isize + delta).rem_euclid(len);
         self.selected.1 = col as usize;
+        self.follow_selection = true;
     }
 
     // Clamped, no wrap-around: jumping from bottom back to top (and the
@@ -79,6 +85,7 @@ impl App {
         self.selected.0 = row as usize;
         let max = self.sections[self.selected.0].tiles.len().saturating_sub(1);
         self.selected.1 = self.selected.1.min(max);
+        self.follow_selection = true;
     }
 
     /// Live refresh: previews, agent statuses and zoom states are re-read
@@ -120,6 +127,7 @@ impl App {
                 count += 1;
                 if count == n {
                     self.selected = (si, ti);
+                    self.follow_selection = true;
                     return true;
                 }
             }
@@ -191,6 +199,7 @@ fn build_app(client: &HerdrClient) -> Result<App, String> {
         sections,
         selected,
         scroll: 0,
+        follow_selection: true,
         confirming_close: false,
         tile_rects: Vec::new(),
     })
@@ -225,8 +234,26 @@ fn event_loop(
         let key = match event::read()? {
             Event::Key(key) if key.kind == KeyEventKind::Press => key,
             Event::Mouse(mouse) => {
-                if mouse.kind != MouseEventKind::Down(MouseButton::Left) || app.confirming_close {
+                if app.confirming_close {
                     continue;
+                }
+                // The wheel scrolls the grid on its own: mouse capture takes
+                // the notches away from the terminal, so the app has to move
+                // the viewport itself. The selection stays where it is until
+                // a key or a click moves it (and pulls the viewport back).
+                match mouse.kind {
+                    MouseEventKind::ScrollUp => {
+                        app.follow_selection = false;
+                        app.scroll = app.scroll.saturating_sub(SCROLL_STEP);
+                        continue;
+                    }
+                    MouseEventKind::ScrollDown => {
+                        app.follow_selection = false;
+                        app.scroll = app.scroll.saturating_add(SCROLL_STEP);
+                        continue;
+                    }
+                    MouseEventKind::Down(MouseButton::Left) => {}
+                    _ => continue,
                 }
                 let position = Position::new(mouse.column, mouse.row);
                 let Some(&(_, tile)) = app
@@ -244,6 +271,7 @@ fn event_loop(
                 });
                 last_click = Some((now, tile));
                 app.selected = tile;
+                app.follow_selection = true;
                 if chained {
                     if let Some((id, tab_zoomed)) = app.selected_pane() {
                         break Outcome::Switch {

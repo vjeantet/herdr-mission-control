@@ -119,6 +119,10 @@ fn ensure_selected_visible(app: &mut App, plan: &Plan, viewport: u16) -> u16 {
         return 0;
     }
     let mut offset = app.scroll.min(plan.total_height - viewport);
+    if !app.follow_selection {
+        app.scroll = offset;
+        return offset;
+    }
     let selected = plan.rows.iter().position(|row| {
         matches!(
             row.kind,

@@ -1,6 +1,6 @@
 id = "vjeantet.mission-control"
 name = "Mission Control"
-version = "0.1.0"
+version = "0.1.1"
 min_herdr_version = "0.8.0"
 description = "Tiled overview of every pane in the current workspace"
 platforms = ["macos", "linux"]
